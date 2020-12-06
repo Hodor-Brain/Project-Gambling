@@ -1,5 +1,15 @@
 #include "Header.h"
 
+int key_bet = 0;
+std::string First_bet = "Even number wins (1.5x)";
+std::string Second_bet = "Odd number wins (1.5x)";
+
+void SetColor(int text, int background = 0)
+{
+	HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hStdOut, (WORD)((background << 4) | text));
+}
+
 void gotoxy(int x, int y) {
 	HANDLE handle;
 	handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -48,6 +58,63 @@ void PrintNum(int number, int x_start)
 	}
 }
 
+void DrawCash()
+{
+	gotoxy(70, 0);
+	std::cout << "Your cash : " << Money;
+	gotoxy(0, 0);
+}
+
+void PrintIsRolling()
+{
+	system("cls");
+
+	std::cout << "Dices are rolling..." << std::endl << std::endl;
+
+	Sleep(2000);
+
+	system("cls");
+}
+
+void PrintFirstBet()
+{
+	if (key_bet == 0)
+	{
+		SetColor(7);
+	}
+
+	std::cout << First_bet << '\t';
+
+	SetColor(6);
+}
+
+void PrintSecondBet()
+{
+	if (key_bet == 1)
+	{
+		SetColor(7);
+	}
+
+	std::cout << Second_bet << std::endl;
+
+	SetColor(6);
+}
+
+void DrawBetScreen(int time)
+{
+	std::cout << "Game starts in " << time / 8 << "..." << std::endl << std::endl << std::endl;
+
+	PrintFirstBet();
+	PrintSecondBet();
+}
+
+void DrawScreen(int time)
+{
+	std::cout << "Game starts in " << time / 8 << "..." << std::endl << std::endl << std::endl;
+
+	std::cout << "Press :\tB - make bet\tEsc - Quit" << std::endl;
+}
+
 std::pair<int, int> ThrowDices()
 {
 	std::random_device rd;
@@ -65,14 +132,109 @@ std::pair<int, int> ThrowDices()
 	return std::make_pair(a, b);
 }
 
-void DrawScreen(int time)
+void Play(std::vector<Bet>& bets)
 {
-	std::cout << "Game starts in " << time / 4 << "..." << std::endl << std::endl << std::endl;
+	std::pair<int, int> pair = ThrowDices();
 
-	std::cout << "Press :\tB - make bet\tEsc - Quit" << std::endl;
+	PrintIsRolling();
+
+	std::cout << pair.first << " & " << pair.second << std::endl;
+
+	int sum = pair.first + pair.second;
+
+	PrintNum(sum / 10, 10);
+	PrintNum(sum % 10, 24);
+
+	for (int i = 0; i < bets.size(); i++)
+	{
+		if (bets[i].KeyofBet() == 0)
+		{
+			if (sum % 2 == 0)
+			{
+				Money += bets[i].GetMoney() * 3 / 2;
+			}
+		}
+		if (bets[i].KeyofBet() == 1)
+		{
+			if (sum % 2 == 1)
+			{
+				Money += bets[i].GetMoney() * 3 / 2;
+			}
+		}
+	}
+
+	Sleep(4000);
 }
 
-void CheckOnInteraction()
+void CheckOnBetInteraction(int& time, std::vector<Bet>& bets)
+{
+	if (_kbhit())
+	{
+		char a = _getch();
+
+		Bet bet(100, key_bet);
+
+		switch (a)
+		{
+		case KB_ESCAPE:
+			isQuit = true;
+			break;
+		case KB_RIGHT:
+			key_bet++;
+
+			if (key_bet > 1)
+				key_bet = 1;
+
+			break;
+		case KB_LEFT:
+			key_bet--;
+
+			if (key_bet < 0)
+				key_bet = 0;
+
+			break;
+		case KB_ENTER:
+			Money -= 100;
+
+			bets.push_back(bet);
+
+			system("cls");
+			std::cout << "You have successfully made bet!" << std::endl;
+			isQuit = true;
+
+			Sleep(2000);
+			time -= 16;
+		default:
+			break;
+		}
+	}
+}
+
+void MakingBetMenu(int& time, std::vector<Bet>& bets)
+{
+	while (time >= 0)
+	{
+		system("cls");
+
+		DrawCash();
+
+		DrawBetScreen(time);
+
+		CheckOnBetInteraction(time, bets);
+
+		if (isQuit)
+		{
+			isQuit = false;
+			return;
+		}
+
+		Sleep(100);
+		time--;
+	}
+}
+
+
+void CheckOnInteraction(int &time, std::vector<Bet>& bets)
 {
 	if (_kbhit())
 	{
@@ -85,8 +247,10 @@ void CheckOnInteraction()
 			break;
 		case 'b':
 			system("cls");
-			std::cout << "You have successfully made bet!" << std::endl;
-			Sleep(1500);
+
+			MakingBetMenu(time, bets);
+
+			system("cls");
 			break;
 		default:
 			break;
@@ -96,24 +260,29 @@ void CheckOnInteraction()
 
 void PlayDiceThrower()
 {
-	int time = 63;
-	while (time != 0)
+	int time = 127;
+
+	std::vector<Bet> bets;
+
+	while (time >= 0)
 	{
 		system("cls");
 
+		DrawCash();
+
 		DrawScreen(time);
 
-		CheckOnInteraction();
+		CheckOnInteraction(time, bets);
 
 		if (isQuit)
 			return;
 
-		Sleep(250);
+		Sleep(100);
 		time--;
 	}
-	/*std::pair<int, int> pair = ThrowDices();
 
-	std::cout << pair.first << " & " << pair.second;*/
+	Play(bets);
+
 }
 
 void PrintZero(int x_start)
